@@ -1,0 +1,21 @@
+Date: Thu, 14 Oct 2021 16:52:40 GMT
+Content-Type: application/json
+Content-Length: 324
+Connection: close
+Server: gunicorn/19.9.0
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Credentials: true
+
+{
+  "args": {
+    "assignment": "1", 
+    "course": "networking"
+  }, 
+  "headers": {
+    "Host": "httpbin.org", 
+    "User-Agent": "Concordia-HTTP/1.0", 
+    "X-Amzn-Trace-Id": "Root=1-61686058-79a84ee5130a668f29d564aa"
+  }, 
+  "origin": "96.20.248.208", 
+  "url": "http://httpbin.org/get?course=networking&assignment=1"
+}
