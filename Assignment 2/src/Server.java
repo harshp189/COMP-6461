@@ -438,12 +438,48 @@ public class Server {
 
     static public void writeResponseToFile(File filename, String data)
     {
+        try
+        {
+            BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(filename));
+
+            bufferedWriter.write(data);
+            bufferedWriter.close();
+
+            if(debugFlag)
+                System.out.println("Response from the server is successfully written to " + filename);
+
+        } catch (IOException ex) {
+            if(debugFlag)
+                System.out.println("Error Writing file named '" + filename + "'" + ex);
+        }
 
     }
 
     static public String readDataFromFile(File filename)
     {
-        return null;
+        StringBuilder lines = new StringBuilder("");
+        String line = null;
+
+        try
+        {
+
+            BufferedReader bufferedReader = new BufferedReader(new FileReader(filename));
+
+            while((line = bufferedReader.readLine()) != null)
+            {
+                lines.append(line);
+
+            }
+            bufferedReader.close();
+        }
+        catch(IOException ex)
+        {
+            if(debugFlag)
+                System.out.println("Error reading file named '" + filename + "'" + ex);
+        }
+
+        return lines.toString();
+
     }
 
 
@@ -454,6 +490,12 @@ public class Server {
      * @return List of files
      */
     static private List<String> getFilesFromDirectory(File currentDir) {
-        return null;
+        List<String> filelist = new ArrayList<>();
+        for (File file : currentDir.listFiles()) {
+            if (!file.isDirectory()) {
+                filelist.add(file.getName());
+            }
+        }
+        return filelist;
     }
 }
