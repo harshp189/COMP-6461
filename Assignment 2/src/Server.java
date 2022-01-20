@@ -84,7 +84,193 @@ public class Server {
 
 
             if (clientRequestType.contains("httpc")) {
+                System.out.println("Performing HTTPC operations\n\n");
 
+                String url = "";
+                String response = "";
+                String options = "";
+                int cl = 0;
+                boolean verbose = false;
+
+                List<String> requestData = Arrays.asList(request.split(" "));
+
+                url = request.substring(request.indexOf("http://"), request.length() - 1);
+
+                if(url.contains(" "))
+                {
+                    url = url.split(" ")[0];
+                }
+
+                URI uri = new URI(url);
+
+                String host = uri.getHost();
+
+
+
+                if (request.contains("get"))
+                {
+                    options = request.substring(request.indexOf("get") + 4); //for getting the contents after get
+                }
+
+                else if(request.contains("post"))
+                {
+                    options = request.substring(request.indexOf("post") + 5); //for getting the contents after post
+                }
+
+                if(options.contains("-v"))
+                    verbose = true;
+
+                String[] datalist = options.split(" ");
+                List<String> data = Arrays.asList(datalist);
+
+
+                String body = "{\n";
+
+
+                if (request.contains("get"))
+                {
+
+                    String query = uri.getRawQuery();
+
+
+                    List<String> querylist = Arrays.asList(query.split("&"));
+
+
+                    //Appending the query arguments to the body
+                    body = body + "\t\"args\": {\n";
+
+                    for (int i = 0 ; i < querylist.size() ; i++)
+                    {
+                        String t1 = querylist.get(i).split("=")[0];
+                        String t2 = querylist.get(i).split("=")[1];
+
+                        body = body + "\t\t\"" + t1 + "\": \"" + t2 + "\",\n";
+                    }
+
+                    body = body + "\t}, \n";
+
+
+                    //Appending headers to the body
+                    body = body + "\t\"headers\": {\n";
+                    for (int i = 0; i < data.size(); i++)
+                    {
+                        if (data.get(i).equals("-h")) {
+
+                            String t1 = data.get(i+1).split(":")[0];
+                            String t2 = data.get(i+1).split(":")[1];
+                            body = body + "\t\t\"" + t1 + "\": \"" + t2 + "\",\n";
+                        }
+                    }
+
+                    body = body + "\t\t\"Connection\": \"close\",\n";
+                    body = body + "\t\t\"Host\": \"" + host + "\"\n";
+                    body = body + "\t},\n";
+                }
+
+
+
+
+
+                else if(request.contains("post"))
+                {
+
+                    boolean jsonFlag = false;
+                    String inlineData = "";
+
+                    body = body + "\t\"args\": {},\n";
+
+
+
+                    //Appending the data to the body
+                    body = body + "\t\"data\": {";
+                    if(options.contains("-d ")){
+
+                        int index = data.indexOf("-d") + 1;
+
+                        for (int i = index ; i < data.size() - 1 ; i++)
+                            inlineData = inlineData + data.get(i);
+
+                        inlineData = inlineData.substring(2, inlineData.length()-2);
+
+                        body = body + inlineData + "}, \n";
+                        cl = body.length();
+                    }
+
+                    body = body + "\t\"files\": {},\n";
+                    body = body + "\t\"form\": {},\n";
+
+                    //HEADERS
+                    body = body + "\t\"headers\": {\n";
+                    for (int i = 0; i < data.size(); i++)
+                    {
+                        if (data.get(i).equals("-h")) {
+
+                            String t1 = data.get(i+1).split(":")[0];
+                            String t2 = data.get(i+1).split(":")[1];
+
+                            if(t2.contains("json"))
+                                jsonFlag = true;
+
+                            body = body + "\t\t\"" + t1 + "\": \"" + t2 + "\",\n";
+                        }
+                    }
+
+                    body = body + "\t\t\"Connection\": \"close\",\n";
+                    body = body + "\t\t\"Host\": \"" + host + "\"\n";
+                    body = body + "\t\t\"Content-Length\": \"" + cl + "\"\n";
+                    body = body + "\t},\n";
+
+
+                    //JSON CONTENT
+                    if(jsonFlag )
+                    {
+                        body = body + "\t\"json\": {\n";
+
+                        List<String> jsonData = Arrays.asList(inlineData.split(","));
+
+                        for (String s : jsonData)
+                        {
+                            body = body + "\t\t" + s + ",\n";
+                        }
+                        body = body + "\t},\n";
+
+                    }
+
+                }
+
+
+                body = body + "\t\"origin\": \"" + InetAddress.getLocalHost().getHostAddress() + "\",\n";
+                body = body + "\t\"url\": \"" + url + "\"\n";
+                body = body + "}\n";
+
+                response = body;
+
+                String verboseBody = "";
+
+                if(verbose)
+                {
+                    verboseBody = verboseBody + "HTTP/1.1 200 OK\n";
+                    verboseBody = verboseBody + "Date: " + java.util.Calendar.getInstance().getTime() + "\n";
+                    verboseBody = verboseBody + "Content-Type: application/json\n";
+                    verboseBody = verboseBody + "Content-Length: "+ body.length() +"\n";
+                    verboseBody = verboseBody + "Connection: close\n";
+                    verboseBody = verboseBody + "Server: Localhost\n";
+                    verboseBody = verboseBody + "Access-Control-Allow-Origin: *\n";
+                    verboseBody = verboseBody + "Access-Control-Allow-Credentials: true\n";
+
+                    response = verboseBody;
+                    response = response + body;
+                }
+
+
+
+
+                if(debugFlag)
+                    System.out.println(response);
+                out.write(response);
+                out.flush();
+
+                socket.close();
 
             } else if (clientRequestType.contains("httpfs")) {
 
