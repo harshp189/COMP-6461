@@ -65,7 +65,8 @@ public class Server {
 
         File currentFolder = new File(directory);
 
-        while (true) {
+        while(true)
+        {
             Socket socket = serverSocket.accept();
             if (debugFlag)
                 System.out.println("Connection establishment successful between server and client");
@@ -73,17 +74,21 @@ public class Server {
             try {
                 out = new PrintWriter(socket.getOutputStream());
                 in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            } catch (Exception e) {
+            }
+            catch (Exception e)
+            {
                 System.out.println(e.getMessage());
             }
 
 
             request = in.readLine();
 
-            String clientRequestType = request.substring(0, 7);
+            String clientRequestType = request.substring(0,7);
 
 
-            if (clientRequestType.contains("httpc")) {
+            if(clientRequestType.contains("httpc"))
+            {
+
                 System.out.println("Performing HTTPC operations\n\n");
 
                 String url = "";
@@ -272,7 +277,156 @@ public class Server {
 
                 socket.close();
 
-            } else if (clientRequestType.contains("httpfs")) {
+
+            }
+
+            else if(clientRequestType.contains("httpfs"))
+            {
+
+
+                System.out.println("Performing httpfs operations");
+                String url = "";
+
+                List<String> requestData = Arrays.asList(request.split(" "));
+
+                if(request.contains("post"))
+                {
+                    url = requestData.get(3);
+                }
+                else
+                {
+                    url = requestData.get(requestData.size() - 1);
+                }
+
+                URI uri = new URI(url);
+
+                String host = uri.getHost();
+
+
+                String body = "{\n";
+                body = body + "\t\"args\":";
+                body = body + "{},\n";
+                body = body + "\t\"headers\": {";
+
+
+                body = body + "\n\t\t\"Connection\": \"close\",\n";
+                body = body + "\t\t\"Host\": \"" + host + "\"\n";
+                body = body + "\t},\n";
+
+                String requestType = requestData.get(1);
+
+
+
+                if(requestType.equalsIgnoreCase("GET") && requestData.get(2).equals("/"))
+                {
+
+                    body = body + "\t\"files\": { ";
+                    List<String> files = getFilesFromDirectory(currentFolder);
+                    if(!files.isEmpty()) {
+                        List<String> fileFilterList = new ArrayList<String>();
+                        fileFilterList.addAll(files);
+
+                        for (int i = 0; i < fileFilterList.size() - 1; i++) {
+                            body = body + files.get(i) + " , ";
+                        }
+
+                        body = body + fileFilterList.get(fileFilterList.size() - 1) + " },\n";
+                        statusCode = 200;
+
+                    }else{
+                        body = body + "},\n";
+                        statusCode = 203;
+                    }
+
+
+
+                }
+
+                else if(requestType.equalsIgnoreCase("GET") && !requestData.get(2).equals("/"))
+                {
+                    String response = "";
+                    String requestedFile = requestData.get(2).substring(1); //will give the name of the file to be get
+
+                    List<String> files = getFilesFromDirectory(currentFolder);
+
+                    if (!files.contains(requestedFile)) {
+
+                        statusCode = 404;
+
+                    }
+                    else {
+                        File file = new File(directory + "/" + requestedFile);
+
+                        response = Server.readDataFromFile(file);
+
+                        body = body + "\t\"data\": \"" + response + "\",\n";
+
+
+                        statusCode = 200;
+                    }
+
+
+                }
+
+                else if(requestType.equalsIgnoreCase("POST"))
+                {
+                    String response = "";
+                    String requestedFile = requestData.get(2).substring(1);
+                    String data = "";
+
+
+                    List<String> files = getFilesFromDirectory(currentFolder);
+
+                    boolean flagOverwrite = true;
+
+                    if (!files.contains(requestedFile))
+                        statusCode = 202;
+                    else
+                        statusCode = 201;
+
+
+                    int index = requestData.indexOf("-d");
+
+                    for(int i = index + 1 ; i < requestData.size() ; i++)
+                    {
+                        data = data + requestData.get(i) + " ";
+                    }
+
+
+                    File file = new File(directory + "/" + requestedFile);
+                    Server.writeResponseToFile(file, data);
+
+
+                }
+
+                if(statusCode == 200)
+                {
+                    body = body + "\t\"status\": \"" + "HTTP/1.1 200 OK" + "\",\n";
+                }
+                else if(statusCode == 201)
+                {
+                    body = body + "\t\"status\": \"" + "HTTP/1.1 201 FILE OVER-WRITTEN" + "\",\n";
+                }
+                else if(statusCode == 202)
+                {
+                    body = body + "\t\"status\": \"" + "HTTP/1.1 202 NEW FILE CREATED" + "\",\n";
+                }
+                else if(statusCode == 404)
+                {
+                    body = body + "\t\"status\": \"" + "HTTP/1.1 404 FILE NOT FOUND" + "\",\n";
+                }else if(statusCode == 203){
+                    body = body + "\t\"status\": \"" + "HTTP/1.1 203 NO FILES FOUND IN THE DIRECTORY" + "\",\n";
+                }
+
+
+                body = body + "\t\"origin\": \"" + InetAddress.getLocalHost().getHostAddress() + "\",\n";
+                body = body + "\t\"url\": \"" + url + "\"\n";
+                body = body + "}\n";
+
+                if(debugFlag)
+                    System.out.println(body);
+                out.write(body);
+                out.flush();
 
 
             }
@@ -281,5 +435,25 @@ public class Server {
 
     }
 
+
+    static public void writeResponseToFile(File filename, String data)
+    {
+
     }
 
+    static public String readDataFromFile(File filename)
+    {
+        return null;
+    }
+
+
+
+    /**
+     * This method will give list of files from specific directory
+     *
+     * @return List of files
+     */
+    static private List<String> getFilesFromDirectory(File currentDir) {
+        return null;
+    }
+}
