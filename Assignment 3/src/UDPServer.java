@@ -366,13 +366,46 @@ public class UDPServer {
 
     static public void writeResponseToFile(File fileName, String data)
     {
+        try
+        {
+            BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(fileName));
 
+            bufferedWriter.write(data);
+            bufferedWriter.close();
+
+            if(debugFlag)
+                System.out.println("Response successfully saved to " + fileName);
+
+        } catch (IOException ex) {
+            if(debugFlag)
+                System.out.println("Error Writing file named '" + fileName + "'" + ex);
+        }
     }
 
     static public String readDataFromFile(File fileName)
     {
+        StringBuilder lines = new StringBuilder("");
+        String line = null;
 
-        return null;
+        try
+        {
+
+            BufferedReader bufferedReader = new BufferedReader(new FileReader(fileName));
+
+            while((line = bufferedReader.readLine()) != null)
+            {
+                lines.append(line);
+
+            }
+            bufferedReader.close();
+        }
+        catch(IOException ex)
+        {
+            if(debugFlag)
+                System.out.println("Error reading file named '" + fileName + "'" + ex);
+        }
+
+        return lines.toString();
     }
 
 
