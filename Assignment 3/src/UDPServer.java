@@ -86,6 +86,58 @@ public class UDPServer {
      */
     private void listenAndServe(int port) throws Exception
     {
+        try (DatagramChannel channel = DatagramChannel.open())
+        {
+            channel.bind(new InetSocketAddress(port));  //will open datagram channel that will receive packets on port 8080
+            Packet response;
+            ByteBuffer buf = ByteBuffer.allocate(Packet.MAX_LEN).order(ByteOrder.BIG_ENDIAN);
+
+            for (;;) {
+                buf.clear();
+                SocketAddress router = channel.receive(buf); //The receive() method will copy the content of a received packet of data into the given Buffer.
+                if (router != null) {
+                    // Parse a packet from the received raw data.
+                    buf.flip();
+                    Packet packet = Packet.fromBuffer(buf);
+                    buf.flip();
+
+                    String requestPayload = new String(packet.getPayload(), UTF_8);
+                    // Send the response to the router not the client.
+                    // The peer address of the packet is the address of the client already.
+                    // We can use toBuilder to copy properties of the current packet.
+                    // This demonstrate how to create a new packet from an existing packet.
+
+                    if (requestPayload.equals("Hi S"))
+                    {
+                        System.out.println("Client: " + requestPayload);
+                        response = packet.toBuilder().setPayload("Hi C".getBytes()).create();
+                        channel.send(response.toBuffer(), router);
+                        System.out.println("Sending Hi from Server");
+                    }
+                    else if (requestPayload.contains("httpfs") || requestPayload.contains("httpc"))
+                    {
+                        System.out.println("Client: " + requestPayload);
+                        String responsePayload = processPayloadRequest(requestPayload);
+                        response = packet.toBuilder().setPayload(responsePayload.getBytes()).create();
+                        channel.send(response.toBuffer(), router);
+
+                    }
+                    else if (requestPayload.equals("Received"))
+                    {
+                        System.out.println("Client: " + requestPayload + "\nSending Close");
+                        response = packet.toBuilder().setPayload("Close".getBytes()).create();
+                        channel.send(response.toBuffer(), router);
+
+                    }
+                    else if (requestPayload.equals("Ok"))
+                    {
+                        System.out.println("Client: " + requestPayload);
+                        System.out.println(requestPayload + " received..!");
+
+                    }
+                }
+            }
+        }
 
 
     }
