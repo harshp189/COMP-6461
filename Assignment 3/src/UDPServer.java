@@ -149,8 +149,222 @@ public class UDPServer {
      * @return response body
      */
     private String processPayloadRequest(String request) throws Exception {
+        String url = "";
+        String response = "";
+        String verboseBody = "";
+        boolean verbose = false;
 
-        return request;
+        List<String> requestData = Arrays.asList(request.split(" "));
+
+        if(debugFlag)
+            System.out.println("Server is processing Payload Request");
+
+
+        for(String d : requestData)
+        {
+            if(d.startsWith("http://"))
+                url = d;
+        }
+
+        if(url.contains(" "))
+        {
+            url = url.split(" ")[0];
+        }
+
+        URI uri = new URI(url);
+
+        String host = uri.getHost();
+
+
+        if(requestData.contains("-v"))
+            verbose = true;
+
+
+
+        String body = "{\n";
+        body = body + "\t\"args\":";
+        body = body + "{},\n";
+        body = body + "\t\"headers\": {";
+
+
+        for (int i = 0; i < requestData.size(); i++)
+        {
+            if (requestData.get(i).equals("-h")) {
+
+                String t1 = requestData.get(i+1).split(":")[0];
+                String t2 = requestData.get(i+1).split(":")[1];
+                body = body + "\n\t\t\"" + t1 + "\": \"" + t2 + "\",";
+            }
+        }
+
+
+        body = body + "\n\t\t\"Connection\": \"close\",\n";
+        body = body + "\t\t\"Host\": \"" + host + "\"\n";
+
+
+
+        body = body + "\t},\n";
+
+        // GET or POST
+        String requestType;
+
+        if(url.endsWith("get/"))
+            requestType = "GetFilesList";
+        else if(url.contains("get"))
+            requestType = "GetFileContent";
+        else
+            requestType = "POST";
+
+
+        //Get list of files in the current directory
+        if(requestType.equals("GetFilesList"))
+        {
+
+            body = body + "\t\"files\": { ";
+            List<String> files = getFilesFromDir(currentFolder);
+
+            //Can use files directly
+            List<String> fileFilterList = new ArrayList<String>();
+            fileFilterList.addAll(files);
+
+            for (int i = 0; i < fileFilterList.size() - 1; i++) {
+                body = body + files.get(i) + " ,\n\t\t\t    ";
+            }
+
+            body = body + fileFilterList.get(fileFilterList.size() - 1) + " },\n";
+            statusCode = 200;
+
+        }
+
+
+        // Get file content of the requested file
+        else if(requestType.equals("GetFileContent"))
+        {
+            String fileContent = "";
+
+            String requestedFile;
+            requestedFile = url.substring(url.indexOf("get/") + 4);
+
+            List<String> files = getFilesFromDir(currentFolder);
+
+
+            if (!files.contains(requestedFile))
+            {
+                statusCode = 404;
+            }
+            else
+            {
+
+                File file = new File(dir + "/" + requestedFile);
+                fileContent = readDataFromFile(file);
+                body = body + "\t\"data\": \"" + fileContent +"\",\n";
+
+                statusCode = 200;
+            }
+
+
+        }
+
+        // Post request
+        else if(requestType.equals("POST"))
+        {
+
+            String requestedFile;
+            String data = "";
+
+            requestedFile = url.substring(url.indexOf("post/") + 5);
+            List<String> files = getFilesFromDir(currentFolder);
+
+
+            if (!files.contains(requestedFile))
+                statusCode = 202;
+            else
+                statusCode = 201;
+
+            int index = requestData.indexOf("-d");
+
+            for(int i = index + 1 ; i < requestData.size() ; i++)
+            {
+                data = data + requestData.get(i) + " ";
+            }
+
+
+            File file = new File(dir + "/" + requestedFile);
+            writeResponseToFile(file, data);
+
+        }
+
+        if(statusCode == 200)
+        {
+            body = body + "\t\"status\": \"" + "HTTP/1.1 200 OK" + "\",\n";
+        }
+        else if(statusCode == 201)
+        {
+            body = body + "\t\"status\": \"" + "HTTP/1.1 201 FILE OVER-WRITTEN" + "\",\n";
+        }
+        else if(statusCode == 202)
+        {
+            body = body + "\t\"status\": \"" + "HTTP/1.1 202 NEW FILE CREATED" + "\",\n";
+        }
+        else if(statusCode == 404)
+        {
+            body = body + "\t\"status\": \"" + "HTTP/1.1 404 FILE NOT FOUND" + "\",\n";
+        }
+
+
+        body = body + "\t\"origin\": \"" + InetAddress.getLocalHost().getHostAddress() + "\",\n";
+        body = body + "\t\"url\": \"" + url + "\"\n";
+        body = body + "}\n";
+
+
+
+        if(verbose)
+        {
+            verboseBody = verboseBody + "HTTP/1.1 200 OK\n";
+            verboseBody = verboseBody + "Date: " + java.util.Calendar.getInstance().getTime() + "\n";
+            verboseBody = verboseBody + "Content-Type: application/json\n";
+            verboseBody = verboseBody + "Content-Length: "+ body.length() +"\n";
+            verboseBody = verboseBody + "Connection: close\n";
+            verboseBody = verboseBody + "Server: Localhost\n";
+            verboseBody = verboseBody + "Access-Control-Allow-Origin: *\n";
+            verboseBody = verboseBody + "Access-Control-Allow-Credentials: true\n";
+
+            response = verboseBody;
+            response = response + body;
+        }
+        else
+        {
+            response = body;
+        }
+
+
+        if(debugFlag)
+        {
+            System.out.println("Sending response to Client..");
+
+        }
+
+        System.out.println(url);
+        return response;
     }
 
+    static private List<String> getFilesFromDir(File currentDir) {
+
+        return null;
+    }
+
+    static public void writeResponseToFile(File fileName, String data)
+    {
+
+    }
+
+    static public String readDataFromFile(File fileName)
+    {
+
+        return null;
+    }
+
+
 }
+
+
