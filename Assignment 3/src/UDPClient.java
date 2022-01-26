@@ -156,6 +156,69 @@ public class UDPClient {
     private static void runClient(SocketAddress routerAddr, InetSocketAddress serverAddr, String msg)
             throws IOException {
         String dir = System.getProperty("user.dir");
+        try (DatagramChannel channel = DatagramChannel.open()) {
+            sequenceNumber++;
+            Packet p = new Packet.Builder().setType(0).setSequenceNumber(sequenceNumber)
+                    .setPortNumber(serverAddr.getPort()).setPeerAddress(serverAddr.getAddress())
+                    .setPayload(msg.getBytes()).create();
+            channel.send(p.toBuffer(), routerAddr);
+            System.out.println("Sending the request to the Router...");
 
+            // Try to receive a packet within timeout.
+            channel.configureBlocking(false);
+            Selector selector = Selector.open();
+            channel.register(selector, OP_READ);
+            selector.select(timeout);
+
+            Set<SelectionKey> keys = selector.selectedKeys();
+            if (keys.isEmpty()) {
+                System.out.println("No response after timeout\nSending again");
+                resend(channel, p, routerAddr);
+            }
+
+            // We just want a single response.
+            ByteBuffer buf = ByteBuffer.allocate(Packet.MAX_LEN).order(ByteOrder.BIG_ENDIAN);
+            SocketAddress router = channel.receive(buf);
+            buf.flip();
+            Packet response = Packet.fromBuffer(buf);
+            //buf.flip();
+            String payload = new String(response.getPayload(), UTF_8);
+
+            if (!receivedPackets.contains(response.getSequenceNumber())) {
+
+                receivedPackets.add(response.getSequenceNumber());
+                System.out.println("\nResponse from Server : \n" + payload);
+
+                // Sending ACK for the received of the response
+                sequenceNumber++;
+                Packet pAck = new Packet.Builder().setType(0).setSequenceNumber(sequenceNumber)
+                        .setPortNumber(serverAddr.getPort()).setPeerAddress(serverAddr.getAddress())
+                        .setPayload("Received".getBytes()).create();
+                channel.send(pAck.toBuffer(), routerAddr);
+
+                // Try to receive a packet within timeout.
+                channel.configureBlocking(false);
+                selector = Selector.open();
+                channel.register(selector, OP_READ);
+                selector.select(timeout);
+
+                keys = selector.selectedKeys();
+                if (keys.isEmpty()) {
+                    resend(channel, pAck, router);
+                }
+
+                buf.flip();
+
+                System.out.println("Connection closed..!");
+                keys.clear();
+
+                sequenceNumber++;
+                Packet pClose = new Packet.Builder().setType(0).setSequenceNumber(sequenceNumber)
+                        .setPortNumber(serverAddr.getPort()).setPeerAddress(serverAddr.getAddress())
+                        .setPayload("Ok".getBytes()).create();
+                channel.send(pClose.toBuffer(), routerAddr);
+                System.out.println("OK sent");
+            }
+        }
     }
 }
