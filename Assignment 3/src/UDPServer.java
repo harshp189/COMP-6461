@@ -348,10 +348,21 @@ public class UDPServer {
         return response;
     }
 
+    /**
+     * This method will give list of files from specific directory
+     *
+     * @return List of files
+     */
     static private List<String> getFilesFromDir(File currentDir) {
-
-        return null;
+        List<String> filelist = new ArrayList<>();
+        for (File file : currentDir.listFiles()) {
+            if (!file.isDirectory()) {
+                filelist.add(file.getName());
+            }
+        }
+        return filelist;
     }
+
 
     static public void writeResponseToFile(File fileName, String data)
     {
